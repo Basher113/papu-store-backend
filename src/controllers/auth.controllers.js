@@ -1,6 +1,8 @@
 const prisma = require("../db");
 const bcrypt = require("bcryptjs");
 const authConfig = require("../config/auth.config");
+const jwt = require("jsonwebtoken");
+require('dotenv').config();
 
 
 const registerController = async (req, res) => {
@@ -48,7 +50,41 @@ const registerController = async (req, res) => {
   }
 };
 
-// CONFIGURE PASSPORT-JWT
 // TODO: ADD LOGIN
+const loginController = async (req, res) => {
+  const {email, password} = req.body;
+  if (!email || !password) {
+    return res.status(400).json({message: "All fields are required"});
+  }
 
-module.exports = {registerController,};
+  try {
+    const user = await prisma.user.findUnique({
+      where: {email}
+    });
+    if (!user) {
+      return res.status(400).json({message: "Invalid Credentials"});
+    }
+
+    const isValidPassword = bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({message: "Invalid Credentials"});
+    }
+
+    const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
+    const refreshToken = jwt.sign({userId: user.id}, authConfig.refresh_secret, {expiresIn: authConfig.refresh_expires});
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 60 * 24 * 5, // 5 days
+    });
+
+    return res.json({accessToken});
+
+  } catch (error) {
+    console.log("Login Error:", error);
+    return res.status(500).json({error});
+  }
+}
+
+module.exports = {registerController, loginController};
