@@ -1,8 +1,13 @@
 const express = require("express");
+const passport = require("passport");
+const {configPassportJwt} = require("./config/passport.config");
 const authRouter = require("./router/auth.router");
 require("dotenv").config();
 
 const app = express();
+
+configPassportJwt(passport); // Use the configured jwt strategy
+app.use(passport.initialize()); // enable passport
 
 // parser
 app.use(express.json());

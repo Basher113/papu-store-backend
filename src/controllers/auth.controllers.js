@@ -46,8 +46,9 @@ const registerController = async (req, res) => {
     console.log("Register Error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
-
-
 };
+
+// CONFIGURE PASSPORT-JWT
+// TODO: ADD LOGIN
 
 module.exports = {registerController,};
