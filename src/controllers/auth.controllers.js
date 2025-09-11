@@ -73,6 +73,14 @@ const loginController = async (req, res) => {
     const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
     const refreshToken = jwt.sign({userId: user.id}, authConfig.refresh_secret, {expiresIn: authConfig.refresh_expires});
 
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
+      }
+    });
+
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
