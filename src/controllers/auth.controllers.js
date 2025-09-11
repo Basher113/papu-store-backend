@@ -117,7 +117,50 @@ const logoutController = async (req, res) => {
     console.log("Logout Error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
-
 }
 
-module.exports = {registerController, loginController, logoutController};
+const refreshTokenController = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({message: "Refresh Token not found"});
+    }
+
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: {token: refreshToken},
+    });
+
+    if (!storedToken) {
+      res.status(403).json({message: "Invalid Token"});
+    }
+
+    if (storedToken.revoked) {
+      // if the token is revoked it is possibly hacked.
+      // in this case we can email or message the user like (detected unusual activity, send the IP + User-Agent of the request) to the user
+      // revoke all the active tokens for that user
+
+      // revoke all the active tokens
+      await prisma.refreshToken.updateMany({
+        where: {userId: storedToken.userId, revoked: false},
+        data: {revoked: true}
+      });
+      res.status(403).json({message: "Revoked Token"});
+    }
+
+    // verify the refreshToken (e.g. expired)
+    jwt.verify(refreshToken, authConfig.refresh_secret, (err, decoded) => {
+      if (err || decoded.userId !== storedToken.userId) {
+        console.log("Refresh Token Verify Error:", err);
+        return res.status(403).json({message: "Invalid token"});
+      }
+    });
+
+    const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
+    res.json({accessToken});
+  } catch (error) {
+     console.log("Refresh Token Error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+module.exports = {registerController, loginController, logoutController, refreshTokenController};
