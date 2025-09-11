@@ -1,5 +1,7 @@
 const express = require("express");
 const passport = require("passport");
+const cookieParser = require("cookie-parser");
+
 const {configPassportJwt} = require("./config/passport.config");
 const authRouter = require("./router/auth.router");
 require("dotenv").config();
@@ -12,6 +14,7 @@ app.use(passport.initialize()); // enable passport
 // parser
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
 

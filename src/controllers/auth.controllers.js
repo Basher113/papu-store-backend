@@ -85,6 +85,7 @@ const loginController = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 1000 * 60 * 60 * 24 * 5, // 5 days
+      sameSite: "strict",
     });
 
     return res.json({accessToken});
@@ -93,6 +94,30 @@ const loginController = async (req, res) => {
     console.log("Login Error:", error);
     return res.status(500).json({error});
   }
+};
+
+const logoutController = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (refreshToken) {
+      await prisma.refreshToken.update({
+        where: {token: refreshToken},
+        data: {revoked: true},
+      });
+    }
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    return res.json({message: "Logged out successfully"});
+  } catch (error) {
+    console.log("Logout Error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+
 }
 
-module.exports = {registerController, loginController};
+module.exports = {registerController, loginController, logoutController};
