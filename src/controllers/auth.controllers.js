@@ -2,6 +2,7 @@ const prisma = require("../db");
 const bcrypt = require("bcryptjs");
 const authConfig = require("../config/auth.config");
 const jwt = require("jsonwebtoken");
+const urlsConfig = require("../config/urls.config");
 require('dotenv').config();
 
 
@@ -68,6 +69,19 @@ const loginController = async (req, res) => {
     const isValidPassword = bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(400).json({message: "Invalid Credentials"});
+    }
+
+    // (user login while still logged in)
+    const existingToken = req.cookies?.refreshToken;
+    if (existingToken) {
+      try {
+        await prisma.refreshToken.updateMany({
+          where: { token: existingToken, userId: user.id, revoked: false },
+          data: { revoked: true },
+        });
+      } catch (err) {
+        console.log("Error revoking old refresh token:", err);
+      }
     }
 
     const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
@@ -163,4 +177,48 @@ const refreshTokenController = async (req, res) => {
   }
 }
 
-module.exports = {registerController, loginController, logoutController, refreshTokenController};
+
+// Google Callback Controller
+const googleCallbackController = async (req, res) => {
+  // (user login while still logged in)
+  const existingToken = req.cookies?.refreshToken;
+  if (existingToken) {
+    try {
+      await prisma.refreshToken.updateMany({
+        where: { token: existingToken, userId: user.id, revoked: false },
+        data: { revoked: true },
+      });
+    } catch (err) {
+      console.log("Error revoking old refresh token:", err);
+    }
+  }
+
+  const refreshToken = jwt.sign(
+    { userId: req.user.id },
+    authConfig.refresh_secret,
+    { expiresIn: authConfig.refresh_expires }
+  );
+
+  // add the refresh token in db
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: req.user.id,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
+    }
+  });
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days
+  });
+
+  const clientUrl = process.env.NODE_ENV === 'production' ? urlsConfig.clientUrlProd : urlsConfig.clientUrlDev;
+  return res.redirect(clientUrl);
+ 
+    
+}
+
+module.exports = {registerController, loginController, logoutController, refreshTokenController, googleCallbackController};

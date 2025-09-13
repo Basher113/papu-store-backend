@@ -36,19 +36,26 @@ const configPassportJwt = (passport) => {
 // Checkout this repo: (https://github.com/nemanjam/mern-boilerplate)
 const serverUrl = process.env.NODE_ENV === 'production' ? urlsConfig.serverUrlProd : urlsConfig.serverUrlDev;
 const googleOauth2Opts = {
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: `${serverUrl}${urlsConfig.googleAuthCallbackUrl}`,
+  clientID: authConfig.google_client_id,
+  clientSecret: authConfig.google_client_secret,
+  callbackURL: "http://localhost:8000/api/auth/google/callback",
   proxy: true,
 }
+
 
 const configPassportGoogleOauth2 = (passport) => {
   passport.use(new GoogleOauthStrategy(
     googleOauth2Opts,
     async (accessToken, refreshToken, profile, done) => {
+      
       try {
         const oldUser = await prisma.user.findUnique({
-          where: {email: profile.email}
+          where: { email: profile.email },
+          select: {
+            id: true,
+            username: true,
+            email: true,
+          }
         });
 
         // Create user in db if no user found in db
