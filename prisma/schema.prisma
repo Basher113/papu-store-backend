@@ -25,7 +25,7 @@ model User {
   refreshTokens RefreshToken[]
 }
 
-// Add RefreshToken model 
+// RefreshToken model 
 model RefreshToken {
   id String  @id @default(cuid())
   token String @unique
@@ -34,4 +34,26 @@ model RefreshToken {
   expiresAt DateTime
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
+}
+
+model Product {
+  id String  @id @default(cuid())
+  name String
+  description String
+  price Decimal @db.Decimal(8, 2)
+  discountPercent Decimal? @db.Decimal(5,2)
+  stock Int @default(0)
+  categoryId Int
+  categories Category[] @relation("ProductCategories")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  iconUrl String
+  products Product[] @relation("ProductCategories")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
