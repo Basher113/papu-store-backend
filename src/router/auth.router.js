@@ -7,7 +7,7 @@ const authRouter = Router();
 authRouter.post("/register", authControllers.registerController);
 authRouter.post("/login", authControllers.loginController);
 authRouter.post("/logout", authControllers.logoutController);
-authRouter.post("/refresh", authControllers.refreshTokenController);
+authRouter.post("/refreshToken", authControllers.refreshTokenController);
 
 // google oauth
 authRouter.get('/google',
@@ -15,7 +15,6 @@ authRouter.get('/google',
     scope: ['profile', 'email'],
   }),
 );
-
 
 authRouter.get(
   '/google/callback',

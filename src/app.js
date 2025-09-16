@@ -5,10 +5,14 @@ const cookieParser = require("cookie-parser");
 
 const {configPassportJwt, configPassportGoogleOauth2} = require("./config/passport.config");
 const authRouter = require("./router/auth.router");
+const userRouter = require("./router/user.router");
 require("dotenv").config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 
 
 // Passport initilize
@@ -22,6 +26,7 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 
 app.use("/api/auth", authRouter);
+app.use("/api/users", userRouter);
 
 
 const APP_PORT = process.env.APP_PORT;

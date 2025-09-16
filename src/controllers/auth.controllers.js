@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const authConfig = require("../config/auth.config");
 const jwt = require("jsonwebtoken");
 const urlsConfig = require("../config/urls.config");
+const { generateAccessToken, generateRefreshToken } = require("../utils/token.utils");
 require('dotenv').config();
 
 
@@ -60,7 +61,8 @@ const loginController = async (req, res) => {
 
   try {
     const user = await prisma.user.findUnique({
-      where: {email}
+      where: {email},
+      
     });
     if (!user) {
       return res.status(400).json({message: "Invalid Credentials"});
@@ -74,8 +76,9 @@ const loginController = async (req, res) => {
     // (user login while still logged in)
     const existingToken = req.cookies?.refreshToken;
     if (existingToken) {
+      console.log("Revoke existing")
       try {
-        await prisma.refreshToken.updateMany({
+        await prisma.refreshToken.update({
           where: { token: existingToken, userId: user.id, revoked: false },
           data: { revoked: true },
         });
@@ -84,8 +87,8 @@ const loginController = async (req, res) => {
       }
     }
 
-    const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
-    const refreshToken = jwt.sign({userId: user.id}, authConfig.refresh_secret, {expiresIn: authConfig.refresh_expires});
+    const accessToken = generateAccessToken(user.id)
+    const refreshToken = generateRefreshToken(user.id)
 
     await prisma.refreshToken.create({
       data: {
@@ -102,7 +105,14 @@ const loginController = async (req, res) => {
       sameSite: "strict",
     });
 
-    return res.json({accessToken});
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 15, // 15 minutes
+      sameSite: "strict",
+    });
+    const {id, email: userEmail, username, googleId, provider, createdAt, updatedAt } = user;
+    return res.json({id, email: userEmail, username, googleId, provider, createdAt, updatedAt });
 
   } catch (error) {
     console.log("Login Error:", error);
@@ -120,7 +130,14 @@ const logoutController = async (req, res) => {
       });
     }
 
+    // Clear cookies
     res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.clearCookie("accessToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -169,8 +186,16 @@ const refreshTokenController = async (req, res) => {
       }
     });
 
-    const accessToken = jwt.sign({userId: user.id}, authConfig.access_secret, {expiresIn: authConfig.access_expires});
-    res.json({accessToken});
+    const accessToken = generateAccessToken(storedToken.userId);
+    res.cookie("accessToken", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 1000 * 60 * 15, // 15 minutes
+      sameSite: "strict",
+    });
+
+    res.json({message: "Refresh token successfully"});
+
   } catch (error) {
      console.log("Refresh Token Error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -181,11 +206,11 @@ const refreshTokenController = async (req, res) => {
 // Google Callback Controller
 const googleCallbackController = async (req, res) => {
   // (user login while still logged in)
-  const existingToken = req.cookies?.refreshToken;
-  if (existingToken) {
+  const existingRefreshToken = req.cookies?.refreshToken;
+  if (existingRefreshToken) {
     try {
       await prisma.refreshToken.updateMany({
-        where: { token: existingToken, userId: user.id, revoked: false },
+        where: { token: existingRefreshToken},
         data: { revoked: true },
       });
     } catch (err) {
@@ -193,32 +218,37 @@ const googleCallbackController = async (req, res) => {
     }
   }
 
-  const refreshToken = jwt.sign(
-    { userId: req.user.id },
-    authConfig.refresh_secret,
-    { expiresIn: authConfig.refresh_expires }
-  );
-
-  // add the refresh token in db
-  await prisma.refreshToken.create({
-    data: {
-      token: refreshToken,
-      userId: req.user.id,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
-    }
-  });
-
+  const refreshToken = generateRefreshToken(req.user.id);
+  const accessToken = generateAccessToken(req.user.id);
+  try {
+    // add the refresh token in db
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: req.user.id,
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
+      }
+    });
+  } catch (error) {
+    console.log("Adding refresh token in db error:", error);
+  }
+  
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days
+    maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days in milliseconds
+  });
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 1000 * 60 * 15 // 15 minutes in milliseconds
   });
 
   const clientUrl = process.env.NODE_ENV === 'production' ? urlsConfig.clientUrlProd : urlsConfig.clientUrlDev;
   return res.redirect(clientUrl);
- 
-    
 }
 
 module.exports = {registerController, loginController, logoutController, refreshTokenController, googleCallbackController};

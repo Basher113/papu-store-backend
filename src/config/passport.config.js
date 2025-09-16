@@ -4,8 +4,17 @@ const authConfig = require("./auth.config");
 const urlsConfig = require("./urls.config");
 
 const prisma = require("../db");
+
+const cookieExtractor = function(req) {
+    let token = null;
+    if (req && req.cookies) {
+        token = req.cookies.accessToken;
+    }
+    return token;
+};
+
 const passportJwtOpts = {
-  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  jwtFromRequest: cookieExtractor,
   secretOrKey: authConfig.access_secret
 }
 
