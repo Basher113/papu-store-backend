@@ -2,11 +2,12 @@ const express = require("express");
 const cors = require('cors')
 const passport = require("passport");
 const cookieParser = require("cookie-parser");
+require("dotenv").config();
 
 const {configPassportJwt, configPassportGoogleOauth2} = require("./config/passport.config");
 const authRouter = require("./router/auth.router");
 const userRouter = require("./router/user.router");
-require("dotenv").config();
+const productRouter = require("./router/product.router");
 
 const app = express();
 app.use(cors({
@@ -25,8 +26,10 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 
+// Routers
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
+app.use("/api/products", productRouter);
 
 
 const APP_PORT = process.env.APP_PORT;
