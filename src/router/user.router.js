@@ -1,10 +1,10 @@
 const {Router} = require("express");
 const userRouter = Router();
 
-const {getUsersController, getCurrentUserDataController} = require("../controllers/user.controller");
+const userController = require("../controllers/user.controller");
 const passport = require("passport");
 
-userRouter.get("/", getUsersController);
-userRouter.get("/profile", passport.authenticate('jwt', { session: false }), getCurrentUserDataController);
+userRouter.get("/", userController.getUsersController);
+userRouter.get("/profile", passport.authenticate('jwt', { session: false }), userController.getCurrentUserDataController);
 
 module.exports = userRouter;

@@ -10,6 +10,25 @@ const getProductsController = async (req, res) => {
   }
 }
 
+const getProductController = async (req, res) => {
+  const {productId} = req.params;
+  try {
+    
+    const product = await prisma.product.findUnique({
+      where: {id: productId}
+    })
+
+    if (!product) {
+      return res.status(404).json({message: "No product found"});
+    }
+
+    return res.json({product});
+  } catch (error) {
+    console.log("Get Products Error:", error);
+    return res.status(500).json({message: "Getting Product Unexpected Error"});
+  }
+}
+
 const createProductsController = async (req, res) => {
   if (req.user.role !== "ADMIN") {
     return res.status(403).json({
@@ -104,4 +123,24 @@ const deleteProductController = async (req, res) => {
   }
 }
 
-module.exports = {getProductsController, createProductsController, updateProductController, deleteProductController};
+const getProductsInCategoryController = async (req, res) => {
+  const {categoryName} = req.params;
+  try {
+    const productsInCategory = await prisma.category.findUnique({
+      where: {name: categoryName},
+      include: {
+        product: true,
+      }
+    });
+
+    if (!productsInCategory) {
+      return res.status(404).json({message: `Category ${categoryName} does not exist`})
+    }
+    return res.json(productsInCategory.products);
+  } catch (error) {
+    console.log("Get Category Products Error:", error);
+    return res.status(500).json({message: "Get Category Products Error"});
+  }
+}
+
+module.exports = {getProductsController, createProductsController, updateProductController, deleteProductController, getProductsInCategoryController, getProductController};

@@ -3,11 +3,14 @@ const productRouter = Router();
 
 const passport = require("passport");
 
-const {getProductsController, createProductsController, updateProductController, deleteProductController} = require("../controllers/product.controllers");
+const productControllers = require("../controllers/product.controllers");
 
-productRouter.get("/", getProductsController);
-productRouter.post("/", passport.authenticate('jwt', { session: false }), createProductsController);
-productRouter.put("/:productId", passport.authenticate('jwt', { session: false }), updateProductController);
-productRouter.delete("/:productId", passport.authenticate('jwt', { session: false }), deleteProductController);
+productRouter.get("/", productControllers.getProductsController);
+productRouter.get("/:productId", productControllers.getProductController);
+productRouter.post("/", passport.authenticate('jwt', { session: false }), productControllers.createProductsController);
+productRouter.put("/:productId", passport.authenticate('jwt', { session: false }), productControllers.updateProductController);
+productRouter.delete("/:productId", passport.authenticate('jwt', { session: false }), productControllers.deleteProductController);
+
+productRouter.get("/category/:categoryName", productControllers.getProductsInCategoryController);
 
 module.exports = productRouter;

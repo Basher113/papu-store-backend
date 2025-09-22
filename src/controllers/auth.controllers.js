@@ -20,6 +20,15 @@ const registerController = async (req, res) => {
   }
 
   try {
+    // Check if email is still valid
+    const emailInvalid = await prisma.user.findUnique({
+      where: {email}
+    });
+
+    if (emailInvalid) {
+      return res.status(400).json({message: "Email already taken"});
+    }
+
     // Check if username is still valid
     const usernameInvalid = await prisma.user.findUnique({
       where: {username}
@@ -28,13 +37,8 @@ const registerController = async (req, res) => {
       return res.status(400).json({message: "Username already taken"});
     }
 
-    // Check if email is still valid
-    const emailInvalid = await prisma.user.findUnique({
-      where: {email}
-    });
-    if (emailInvalid) {
-      return res.status(400).json({message: "Email already taken"});
-    }
+    
+    
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.user.create({
@@ -62,7 +66,6 @@ const loginController = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: {email},
-      
     });
     if (!user) {
       return res.status(400).json({message: "Invalid Credentials"});
@@ -111,8 +114,8 @@ const loginController = async (req, res) => {
       maxAge: 1000 * 60 * 15, // 15 minutes
       sameSite: "strict",
     });
-    const {id, email: userEmail, username, googleId, provider, createdAt, updatedAt } = user;
-    return res.json({id, email: userEmail, username, googleId, provider, createdAt, updatedAt });
+    const {id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt } = user;
+    return res.json({id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt });
 
   } catch (error) {
     console.log("Login Error:", error);
