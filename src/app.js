@@ -8,6 +8,7 @@ const {configPassportJwt, configPassportGoogleOauth2} = require("./config/passpo
 const authRouter = require("./router/auth.router");
 const userRouter = require("./router/user.router");
 const productRouter = require("./router/product.router");
+const cartRouter = require("./router/cart.router");
 
 const app = express();
 app.use(cors({
@@ -30,6 +31,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
+app.use("/api/carts/", cartRouter);
 
 
 const APP_PORT = process.env.APP_PORT;
