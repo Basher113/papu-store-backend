@@ -8,17 +8,8 @@ require('dotenv').config();
 
 
 const registerController = async (req, res) => {
-  const {username, email, password, confirmPassword} = req.body;
-  
-  if (!username || !email || !password || !confirmPassword) {
-    return res.status(400).json({message: "All fields are required"});
-  };
-
-    // Check if password and confirm password is equal
-  if (password !== confirmPassword) {
-    return res.status(400).json({message: "Passwords do not match"})
-  }
-
+  const {username, email, password} = req.body;
+  console.log(email, "Email");
   try {
     // Check if email is still valid
     const emailInvalid = await prisma.user.findUnique({
@@ -36,9 +27,6 @@ const registerController = async (req, res) => {
     if (usernameInvalid) {
       return res.status(400).json({message: "Username already taken"});
     }
-
-    
-    
 
     const hashedPassword = await bcrypt.hash(password, 10);
     await prisma.user.create({
@@ -59,10 +47,7 @@ const registerController = async (req, res) => {
 // TODO: ADD LOGIN
 const loginController = async (req, res) => {
   const {email, password} = req.body;
-  if (!email || !password) {
-    return res.status(400).json({message: "All fields are required"});
-  }
-
+  
   try {
     const user = await prisma.user.findUnique({
       where: {email},
@@ -90,8 +75,8 @@ const loginController = async (req, res) => {
       }
     }
 
-    const accessToken = generateAccessToken(user.id)
-    const refreshToken = generateRefreshToken(user.id)
+    const accessToken = generateAccessToken(user.id);
+    const refreshToken = generateRefreshToken(user.id);
 
     await prisma.refreshToken.create({
       data: {

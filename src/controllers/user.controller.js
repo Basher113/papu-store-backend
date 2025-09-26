@@ -12,10 +12,8 @@ const getUsersController = async (req, res) => {
 
 const getCurrentUserDataController = async (req, res) => {
   try {
-    console.log(req.user);
-    console.log(req.cookies.accessToken, "accessToken");
     const user = await prisma.user.findUnique({where: {id: req.user.id}});
-    return res.json({user});
+    return res.json(user);
   } catch (error) {
     console.log("Error getting users:", error);
     return res.status(500).json({message: "Internal Service Error"});
