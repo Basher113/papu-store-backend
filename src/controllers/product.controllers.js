@@ -22,7 +22,7 @@ const getProductController = async (req, res) => {
       return res.status(404).json({message: "No product found"});
     }
 
-    return res.json({product});
+    return res.json(product);
   } catch (error) {
     console.log("Get Products Error:", error);
     return res.status(500).json({message: "Getting Product Unexpected Error"});
@@ -124,19 +124,28 @@ const deleteProductController = async (req, res) => {
 }
 
 const getProductsInCategoryController = async (req, res) => {
-  const {categoryName} = req.params;
+  const {categoryName, cursorId} = req.params;
   try {
-    const productsInCategory = await prisma.category.findUnique({
-      where: {name: categoryName},
-      include: {
-        product: true,
-      }
-    });
+    const category = await prisma.category.findUnique({
+      where: {name: categoryName}
+    })
 
-    if (!productsInCategory) {
-      return res.status(404).json({message: `Category ${categoryName} does not exist`})
+    if (!category) {
+      return res.status(404).json({message: `Category ${categoryName} does not exist`});
     }
-    return res.json(productsInCategory.products);
+
+    const limit = 10;
+    const cursor = cursorId ? {id: cursorId} : undefined;
+    const productsInCategory = await prisma.product.findMany({
+      take: limit,
+      where: {
+        categories: {
+          some: {id: category.id},
+        },
+      },
+      cursor
+    });
+    return res.json({products: productsInCategory, cursorId});
   } catch (error) {
     console.log("Get Category Products Error:", error);
     return res.status(500).json({message: "Get Category Products Error"});
