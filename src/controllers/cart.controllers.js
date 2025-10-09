@@ -8,11 +8,18 @@ const getCartByUserController = async (req, res) => {
       where: {userId: userId},
       update: {},
       create: {userId},
-      include: {
-        cartItems: true,
-      }
     });
-    return res.json(userCart);
+
+    const userCartItems = await prisma.cartItem.findMany({
+      where: {
+        cartId: userCart.id
+      },
+      include: {
+        product: true,
+      },
+    })
+  
+    return res.json(userCartItems);
   } catch (error) {
     console.log("Get Cart By User Error:", error);
     return res.status(500).json({message: "Unexpected Error."});
@@ -22,7 +29,7 @@ const getCartByUserController = async (req, res) => {
 const addCartItemToCartController = async (req, res) => {
   const userId = req.user.id;
   const {productId, quantity} = req.body;
-  
+  console.log("HELLO?")
   try {
     // Check if the product exist
     const existingProduct = await prisma.product.findUnique({
@@ -51,16 +58,18 @@ const addCartItemToCartController = async (req, res) => {
         },
       },
       update: {
-        quantity: cartItem.quantity + quantity,
+        quantity: {
+          increment: parseInt(quantity),
+        }
       },
       create: {
         productId: productId,
         cartId: userCart.id,
-        quantity: quantity
+        quantity: parseInt(quantity)
       }
     })
 
-    return res.json({message: "Add to cart succesfully."});
+    return res.json({message: "Add to cart succesfully.", cartItem});
   } catch (error) {
     console.log("Add to Cart Error:", error);
     return res.status(500).json({message: "Unexpected result. Please try again later."});
@@ -83,7 +92,7 @@ const updateCartItemController = async (req, res) => {
           cartId: userCart.id,
         },
         data: {
-          quantity: item.quantity + quantity
+          quantity
         }
       },
 

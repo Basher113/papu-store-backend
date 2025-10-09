@@ -124,7 +124,10 @@ const deleteProductController = async (req, res) => {
 }
 
 const getProductsInCategoryController = async (req, res) => {
-  const {categoryName, cursorId} = req.params;
+  const {categoryName} = req.params;
+  const {cursorId, limit} = req.query;
+  console.log(req.params);
+  console.log(cursorId)
   try {
     const category = await prisma.category.findUnique({
       where: {name: categoryName}
@@ -134,18 +137,22 @@ const getProductsInCategoryController = async (req, res) => {
       return res.status(404).json({message: `Category ${categoryName} does not exist`});
     }
 
-    const limit = 10;
-    const cursor = cursorId ? {id: cursorId} : undefined;
     const productsInCategory = await prisma.product.findMany({
-      take: limit,
+      take: parseInt(limit) + 1,
       where: {
         categories: {
           some: {id: category.id},
         },
       },
-      cursor
+      cursor: cursorId ? {id: cursorId} : undefined,
     });
-    return res.json({products: productsInCategory, cursorId});
+
+    let nextCursor = null;
+    if (productsInCategory.length > parseInt(limit)) { // Check if has more products
+      const lastProduct = productsInCategory.pop();
+      nextCursor = lastProduct.id;
+    }
+    return res.json({products: productsInCategory, cursorId: nextCursor});
   } catch (error) {
     console.log("Get Category Products Error:", error);
     return res.status(500).json({message: "Get Category Products Error"});

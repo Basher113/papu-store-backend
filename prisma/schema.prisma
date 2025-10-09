@@ -48,7 +48,6 @@ model Product {
   discountPercent Decimal? @db.Decimal(5,2)
   stock Int @default(0)
   categories Category[] @relation("ProductCategories")
-  categoryId Int
   orderItems OrderItem[]
   cartItems CartItem[]
   createdAt  DateTime @default(now())
