@@ -14,6 +14,9 @@ const getCartByUserController = async (req, res) => {
       where: {
         cartId: userCart.id
       },
+      orderBy: {
+        id: "desc",
+      },
       include: {
         product: true,
       },
@@ -29,7 +32,6 @@ const getCartByUserController = async (req, res) => {
 const addCartItemToCartController = async (req, res) => {
   const userId = req.user.id;
   const {productId, quantity} = req.body;
-  console.log("HELLO?")
   try {
     // Check if the product exist
     const existingProduct = await prisma.product.findUnique({
@@ -66,10 +68,13 @@ const addCartItemToCartController = async (req, res) => {
         productId: productId,
         cartId: userCart.id,
         quantity: parseInt(quantity)
-      }
+      },
+     
     })
 
-    return res.json({message: "Add to cart succesfully.", cartItem});
+    
+
+    return res.json({message: "Add to cart succesfully."});
   } catch (error) {
     console.log("Add to Cart Error:", error);
     return res.status(500).json({message: "Unexpected result. Please try again later."});
@@ -78,28 +83,22 @@ const addCartItemToCartController = async (req, res) => {
 
 const updateCartItemController = async (req, res) => {
   const userId = req.user.id;
-  const {productId} = req.params;
+  const {cartItemId} = req.params;
   const {quantity} = req.body;
   try {
-    const userCart = await prisma.cart.findUnique({
-      where: {userId: userId}
-    });
 
     const cartItem = await prisma.cartItem.update({
-      where: {
-        productId_cartId: {
-          productId: productId,
-          cartId: userCart.id,
-        },
-        data: {
-          quantity
-        }
-      },
-
+      where: {id: cartItemId},
+      data: {quantity: parseInt(quantity)},
+      include: {cart: true} // To get access of the owner/user and check if the same user is updating it.
     });
 
     if (!cartItem) {
-      return res.status(400).json({message: "CartItem not found."});
+      return res.status(404).json({message: "CartItem not found."});
+    }
+    
+    if (cartItem.cart.userId !== userId) {
+      return res.status(403).json({message: "Forbidden."})
     }
 
     return res.json({message: "Updated Succesfully."});
