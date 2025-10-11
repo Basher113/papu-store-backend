@@ -72,8 +72,6 @@ const addCartItemToCartController = async (req, res) => {
      
     })
 
-    
-
     return res.json({message: "Add to cart succesfully."});
   } catch (error) {
     console.log("Add to Cart Error:", error);
@@ -82,53 +80,29 @@ const addCartItemToCartController = async (req, res) => {
 }
 
 const updateCartItemController = async (req, res) => {
-  const userId = req.user.id;
   const {cartItemId} = req.params;
   const {quantity} = req.body;
   try {
-
-    const cartItem = await prisma.cartItem.update({
+    await prisma.cartItem.update({
       where: {id: cartItemId},
       data: {quantity: parseInt(quantity)},
-      include: {cart: true} // To get access of the owner/user and check if the same user is updating it.
-    });
-
-    if (!cartItem) {
-      return res.status(404).json({message: "CartItem not found."});
-    }
-    
-    if (cartItem.cart.userId !== userId) {
-      return res.status(403).json({message: "Forbidden."})
-    }
+    })
 
     return res.json({message: "Updated Succesfully."});
   } catch (error) {
-    console.log("Delete Cart Item Controller Error:", error);
+    console.log("Update Cart Item Controller Error:", error);
     return res.status(500).json("Unexpected Error.");
   }
 }
 
 const deleteCartItemController = async (req, res) => {
-  const userId = req.user.id;
-  const {productId} = req.params;
+  const {cartItemId} = req.params;
   try {
-    const userCart = await prisma.cart.findUnique({
-      where: {userId: userId}
+    await prisma.cartItem.delete({
+      where: {id: cartItemId},
     });
 
-    const cartItem = await prisma.cartItem.delete({
-      where: {
-        productId_cartId: {
-          productId: productId,
-          cartId: userCart.id,
-        },
-      },
-    });
-
-    if (!cartItem) {
-      return res.status(400).json({message: "CartItem not found."});
-    }
-    return res.json({message: "Deleted Succesfully."});
+    return res.json({message: "Item deleted."});
   } catch (error) {
     console.log("Delete Cart Item Controller Error:", error);
     return res.status(500).json("Unexpected Error.");
