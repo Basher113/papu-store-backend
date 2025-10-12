@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const registerController = async (req, res) => {
   const {username, email, password} = req.body;
-  console.log(email, "Email");
+
   try {
     // Check if email is still valid
     const emailInvalid = await prisma.user.findUnique({
@@ -17,7 +17,7 @@ const registerController = async (req, res) => {
     });
 
     if (emailInvalid) {
-      return res.status(400).json({message: "Email already taken"});
+      return res.status(400).json({errors: {email: ["Email already taken"]}}); // Just so it is consistent on my validation middleware error response.
     }
 
     // Check if username is still valid
@@ -25,7 +25,7 @@ const registerController = async (req, res) => {
       where: {username}
     });
     if (usernameInvalid) {
-      return res.status(400).json({message: "Username already taken"});
+      return res.status(400).json({errors: {username: ["Username already taken"]}}); // Just so it is consistent on my validation middleware error response.
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
