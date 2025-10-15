@@ -1,5 +1,4 @@
 const {Router} = require("express");
-const passport = require("passport");
 
 const cartControllers = require("../controllers/cart.controllers");
 const {authorizeCartItemAction} = require("../middlewares/authorization.middleware")
@@ -7,11 +6,11 @@ const {authorizeCartItemAction} = require("../middlewares/authorization.middlewa
 const cartRouter = Router();
 
 
-cartRouter.get("/", passport.authenticate('jwt', { session: false }), cartControllers.getCartByUserController);
-cartRouter.post("/cartItems/", passport.authenticate('jwt', { session: false }), cartControllers.addCartItemToCartController);
-cartRouter.put("/cartItems/:cartItemId", passport.authenticate('jwt', { session: false }), authorizeCartItemAction, cartControllers.updateCartItemController);
-cartRouter.patch("/cartItems/:cartItemId", passport.authenticate('jwt', { session: false }), authorizeCartItemAction, cartControllers.updateCartItemController);
-cartRouter.delete("/cartItems/:cartItemId", passport.authenticate('jwt', { session: false }), authorizeCartItemAction, cartControllers.deleteCartItemController);
+cartRouter.get("/", cartControllers.getCartByUserController);
+cartRouter.post("/cartItems/", cartControllers.addCartItemToCartController);
+cartRouter.put("/cartItems/:cartItemId", authorizeCartItemAction, cartControllers.updateCartItemController);
+cartRouter.patch("/cartItems/:cartItemId", authorizeCartItemAction, cartControllers.updateCartItemController);
+cartRouter.delete("/cartItems/:cartItemId", authorizeCartItemAction, cartControllers.deleteCartItemController);
 
 module.exports = cartRouter;
 

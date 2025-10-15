@@ -6,7 +6,7 @@ const authorizeCartItemAction = async (req, res, next) => {
   try {
     const cartItem = await prisma.cartItem.findUnique({
       where: {id: cartItemId},
-      include: {cart: true,}, // To get access of the owner/user and check if the same user is updating it.
+      include: {cart: true,},
     });
 
     if (!cartItem) {
@@ -18,9 +18,31 @@ const authorizeCartItemAction = async (req, res, next) => {
     }
     next();
   } catch (error) {
-    console.log("Authorize Cart Item Middleware Error:", error)
-    return res.status(500).json("Unexpected Error")
+    console.log("Authorize Cart Item Middleware Error:", error);
+   return res.status(500).json({message: "Internal Service Error"});
   }
 }
 
-module.exports = {authorizeCartItemAction}
+const authorizeOrderAction = async (req, res, next) => {
+  const user = req.user;
+  const {orderId} = req.params;
+  try {
+    const order = await prisma.order.findUnique({
+      where: {id: orderId}
+    });
+
+    if (!order) {
+      return res.status(404).json({message: "Order not found."});
+    }
+
+    if (order.userId !== user.id && user.role === "CUSTOMER") { // Check if the user is not admin or if the same user is accessing the order
+      return res.status(403).json({message: "Forbidden."});
+    }
+    next();
+    
+  } catch (error) {
+    console.log("Authorize Order Action Middleware Error:", error)
+    return res.status(500).json({message: "Internal Service Error"});
+  }
+}
+module.exports = {authorizeCartItemAction, authorizeOrderAction}
