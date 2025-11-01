@@ -35,7 +35,10 @@ app.use("/api/users", userRouter);
 app.use("/api/products", productRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/carts", passport.authenticate('jwt', { session: false }), cartRouter);
-app.use("/api/orders/", passport.authenticate('jwt', { session: false }), orderRouter)
+app.use("/api/orders/", (req, res, next) => {
+    if (req.path === "/paymongo_webhook") return next(); // don't authenticate when in paymongo webhook
+    passport.authenticate("jwt", { session: false })(req, res, next);
+  }, orderRouter)
 
 
 const APP_PORT = process.env.APP_PORT;

@@ -9,7 +9,7 @@ require('dotenv').config();
 
 const registerController = async (req, res) => {
   const {username, email, password} = req.body;
-
+  console.log(email, "Email");
   try {
     // Check if email is still valid
     const emailInvalid = await prisma.user.findUnique({
@@ -17,7 +17,7 @@ const registerController = async (req, res) => {
     });
 
     if (emailInvalid) {
-      return res.status(400).json({errors: {email: ["Email already taken"]}}); // Just so it is consistent on my validation middleware error response.
+      return res.status(400).json({message: "Email already taken"});
     }
 
     // Check if username is still valid
@@ -25,7 +25,7 @@ const registerController = async (req, res) => {
       where: {username}
     });
     if (usernameInvalid) {
-      return res.status(400).json({errors: {username: ["Username already taken"]}}); // Just so it is consistent on my validation middleware error response.
+      return res.status(400).json({message: "Username already taken"});
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -88,16 +88,15 @@ const loginController = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       maxAge: 1000 * 60 * 60 * 24 * 5, // 5 days
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     });
-
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       maxAge: 1000 * 60 * 15, // 15 minutes
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     });
     const {id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt } = user;
     return res.json({id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt });
@@ -121,14 +120,14 @@ const logoutController = async (req, res) => {
     // Clear cookies
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     });
 
     res.clearCookie("accessToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: true,
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     });
 
     return res.json({message: "Logged out successfully"});
@@ -177,9 +176,9 @@ const refreshTokenController = async (req, res) => {
     const accessToken = generateAccessToken(storedToken.userId);
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: true,
       maxAge: 1000 * 60 * 15, // 15 minutes
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     });
 
     res.json({message: "Refresh token successfully"});
@@ -223,15 +222,15 @@ const googleCallbackController = async (req, res) => {
   
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days in milliseconds
   });
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: true,
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
     maxAge: 1000 * 60 * 15 // 15 minutes in milliseconds
   });
 

@@ -2,6 +2,7 @@ const prisma = require("../db");
 
 const getUserOrdersController = async (req, res) => {
   const userId = req.user.id;
+  await prisma.address.deleteMany({});
   try {
     const orders = await prisma.order.findMany({
       where: {userId}
@@ -13,7 +14,7 @@ const getUserOrdersController = async (req, res) => {
   }
 }
 
-const getUserOrderController = async (req, res) => {
+const getUserOrderByOrderIdController = async (req, res) => {
   const userId = req.user.id;
   const {orderId} = req.params;
   try {
@@ -23,12 +24,11 @@ const getUserOrderController = async (req, res) => {
         userId,
       },
       include: {
-        orderItems: {
-          include: {
-            product: true,
-          }
-        },
-      }
+        orderItems: true,
+        payment: true,
+        address: true
+      },
+      
     });
     if (!order) return res.status(404).json({message: "Order not found."});
     return res.json(order);
@@ -37,6 +37,33 @@ const getUserOrderController = async (req, res) => {
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
+
+const getUserOrderBySessionIdController = async (req, res) => {
+  const {sessionId} = req.params;
+
+  try {
+    const transaction = await prisma.paymentTransaction.findUnique({
+      where: {transactionRef: sessionId},
+      include: {
+        order: {
+          include: {
+            orderItems: true,
+          }
+        }
+      }
+    });
+    if (!transaction) return res.status(404).json({message: "No orders found"});
+    const order = transaction.order;
+    return res.status(200).json(order);
+  } catch (error) {
+    console.log("Get user order by session id error:", error)
+    return res.status(500).json({message: "Internal Service Error"});
+  }
+
+}
+
+
+
 
 const getUserOrderItemsController = async (req, res) => {
   const userId = req.user.id;
@@ -61,21 +88,52 @@ const getUserOrderItemsController = async (req, res) => {
 
 const createOrderController = async (req, res) => {
   const userId = req.user.id;
-  const {products} = req.body;
+  const {products, paymentMethod, total, addressData} = req.body;
   
   try {
-    await prisma.order.create({
+
+    // create or update user address.
+    const existingAddress = await prisma.address.findFirst({
+      where: {userId}
+    });
+
+    const order = await prisma.order.create({
       data: {
         userId,
         orderItems: {
           createMany: {
-            data: products.map(product => ({productId: product.productId, quantity: parseInt(product.quantity)})),
+            data: products.map(product => ({productId: product.id, quantity: parseInt(product.quantity)})),
           },
         },
+        address: existingAddress
+          ? { connect: { id: existingAddress.id } } // re-use existing
+          : {
+              create: {
+                userId,
+                fullName: addressData.fullName,
+                phoneNumber: addressData.phoneNumber,
+                barangay: addressData.barangay,
+                street: addressData.street,
+                city: addressData.city,
+                postalCode: addressData.postalCode,
+                
+              },
+            },
       },
     });
 
+    await prisma.paymentTransaction.create({
+      data: {
+        orderId: order.id,
+        paymentMethod: paymentMethod,
+        amount: total,
+        currency: "PHP",
+      },
+    });
+
+    console.log("Order Created Succesfully.")
     return res.status(201).json({message: "Order Succesfully."});
+    
   } catch (error) {
     console.log("create order controller error:", error);
     return res.status(500).json({message: "Internal Service Error"});
@@ -99,5 +157,5 @@ const updatelOrderContoller = async (req, res) => {
   }
 }
 
-module.exports = { getUserOrdersController, getUserOrderController,
+module.exports = { getUserOrdersController, getUserOrderByOrderIdController, getUserOrderBySessionIdController,
   getUserOrderItemsController, createOrderController, updatelOrderContoller,}

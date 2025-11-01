@@ -126,8 +126,7 @@ const deleteProductController = async (req, res) => {
 const getProductsInCategoryController = async (req, res) => {
   const {categoryName} = req.params;
   const {cursorId, limit} = req.query;
-  console.log(req.params);
-  console.log(cursorId)
+
   try {
     const category = await prisma.category.findUnique({
       where: {name: categoryName}

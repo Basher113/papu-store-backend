@@ -23,6 +23,7 @@ model User {
   role Role @default(CUSTOMER)
   refreshTokens RefreshToken[]
   orders Order[]
+  addresses Address[]
   cart Cart?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -89,6 +90,9 @@ model Order {
   user User @relation(fields: [userId], references: [id])
   userId String
   orderItems OrderItem[]
+  // A one-to-one relation to the shipping address
+  address Address?
+  payment PaymentTransaction?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -100,9 +104,37 @@ model OrderItem {
   productId String
   order Order @relation(fields: [orderId], references: [id])
   orderId String
-
   @@unique([productId, orderId])
 }
+
+model Address {
+  id String @id @default(cuid())
+  fullName String
+  phoneNumber String
+  street    String
+  barangay String
+  city      String
+  postalCode String
+
+  user      User   @relation(fields: [userId], references: [id])
+  userId    String
+
+  order Order? @relation(fields: [orderId], references: [id])
+  orderId String? @unique
+}
+
+
+model PaymentTransaction {
+  id String @id @default(cuid())
+  orderId        String      @unique
+  paymentMethod  String
+  transactionRef String?
+  paidAt         DateTime?
+  amount         Float
+  currency       String
+  order          Order    @relation(fields: [orderId], references: [id])
+}
+
 
 enum Role {
   ADMIN

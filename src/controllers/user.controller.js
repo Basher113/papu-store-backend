@@ -2,7 +2,7 @@ const prisma = require("../db");
 
 const getUsersController = async (req, res) => {
   try {
-    const users = await prisma.user.findMany({include: {refreshTokens: true}});
+    const users = await prisma.user.findMany();
     return res.json({users});
   } catch (error) {
     console.log("Error getting users:", error);
