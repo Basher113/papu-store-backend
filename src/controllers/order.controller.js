@@ -2,12 +2,57 @@ const prisma = require("../db");
 
 const getUserOrdersController = async (req, res) => {
   const userId = req.user.id;
-  await prisma.address.deleteMany({});
+  const {status, search, cursorId, limit} = req.query;
+  
   try {
+    console.log("What went wrong?")
+    const where = { userId };
+
+    // Filter by status
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase();
+    }
+
+    // Search filter
+    if (search) {
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        {
+          orderItems: {
+            some: {
+              product: {
+                name: { contains: search, mode: 'insensitive' }
+              }
+            }
+          }
+        }
+      ];
+    }
+
     const orders = await prisma.order.findMany({
-      where: {userId}
-    }) || [];
-    return res.json(orders);
+        where,
+        include: {
+          orderItems: {
+            include: {
+              product: true
+            }
+          },
+          payment: true
+        },
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit) + 1,
+        cursor: cursorId ? {id: cursorId} : undefined,
+      })
+
+    let nextCursor = null;
+    if (orders.length > parseInt(limit)) { // Check if has more orders
+      const lastOrder = orders.pop();
+      nextCursor = lastOrder.id;
+    }
+    
+    return res.json({orders, cursorId: nextCursor})
+  
+
   } catch (error) {
     console.log("get user orders error:", error);
     return res.status(500).json({message: "Internal Service Error"});
@@ -62,9 +107,6 @@ const getUserOrderBySessionIdController = async (req, res) => {
 
 }
 
-
-
-
 const getUserOrderItemsController = async (req, res) => {
   const userId = req.user.id;
   try {
@@ -88,7 +130,7 @@ const getUserOrderItemsController = async (req, res) => {
 
 const createOrderController = async (req, res) => {
   const userId = req.user.id;
-  const {products, paymentMethod, total, addressData} = req.body;
+  const {products, paymentMethod, total, addressData, isCheckoutFromCart} = req.body;
   
   try {
 
@@ -130,6 +172,13 @@ const createOrderController = async (req, res) => {
         currency: "PHP",
       },
     });
+
+    if (isCheckoutFromCart) {
+      // If user checkout their cart, then clear user cart
+      await prisma.cartItem.deleteMany({
+        where: {userId}
+      });
+    }
 
     console.log("Order Created Succesfully.")
     return res.status(201).json({message: "Order Succesfully."});

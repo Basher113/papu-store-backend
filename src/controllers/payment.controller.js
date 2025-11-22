@@ -97,6 +97,7 @@ const handlePaymongoWebhook = async (req, res) => {
       const order = await prisma.order.create({
         data: {
           userId,
+          status: "PROCESSING",
           orderItems: {
             createMany: {
               data: products.map((product) => ({
@@ -133,7 +134,7 @@ const handlePaymongoWebhook = async (req, res) => {
         },
       });
     }
-    console.log("Webhook?")
+    
     res.sendStatus(200);
   } catch (err) {
     console.error("Webhook error:", err.message);

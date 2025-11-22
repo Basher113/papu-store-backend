@@ -10,8 +10,9 @@ const urlsConfig = {
 
   // Client URLS
   clientUrlProd: process.env.CLIENT_URL_PROD,
-  clientUrlDev: process.env.CLIENT_URL_DEV
+  clientUrlDev: process.env.CLIENT_URL_DEV,
 
+  ngrokTestUrl: process.env.NGROK_TEST_URL
 }
 
 module.exports = urlsConfig;
