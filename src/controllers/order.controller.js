@@ -5,7 +5,6 @@ const getUserOrdersController = async (req, res) => {
   const {status, search, cursorId, limit} = req.query;
   
   try {
-    console.log("What went wrong?")
     const where = { userId };
 
     // Filter by status
@@ -134,10 +133,7 @@ const createOrderController = async (req, res) => {
   
   try {
 
-    // create or update user address.
-    const existingAddress = await prisma.address.findFirst({
-      where: {userId}
-    });
+
 
     const order = await prisma.order.create({
       data: {
@@ -147,21 +143,17 @@ const createOrderController = async (req, res) => {
             data: products.map(product => ({productId: product.id, quantity: parseInt(product.quantity)})),
           },
         },
-        address: existingAddress
-          ? { connect: { id: existingAddress.id } } // re-use existing
-          : {
-              create: {
-                userId,
-                fullName: addressData.fullName,
-                phoneNumber: addressData.phoneNumber,
-                barangay: addressData.barangay,
-                street: addressData.street,
-                city: addressData.city,
-                postalCode: addressData.postalCode,
-                
-              },
+        address: {
+            create: {
+              fullName: addressData.fullName,
+              phoneNumber: addressData.phoneNumber,
+              barangay: addressData.barangay,
+              street: addressData.street,
+              city: addressData.city,
+              postalCode: addressData.postalCode,
             },
-      },
+          },
+      }
     });
 
     await prisma.paymentTransaction.create({
@@ -176,12 +168,15 @@ const createOrderController = async (req, res) => {
     if (isCheckoutFromCart) {
       // If user checkout their cart, then clear user cart
       await prisma.cartItem.deleteMany({
-        where: {userId}
+        where: {
+          cart: {
+            userId: userId
+          }
+        }
       });
     }
 
-    console.log("Order Created Succesfully.")
-    return res.status(201).json({message: "Order Succesfully."});
+    return res.status(201).json({orderId: order.id, checkoutUrl: "http://localhost:5173/checkout/order-confirmation", message: "Order Succesfully."});
     
   } catch (error) {
     console.log("create order controller error:", error);

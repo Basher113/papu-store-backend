@@ -123,16 +123,16 @@ const populateProduct = async () => {
 
   // 📷 Cameras (10)
   await Promise.all([
-    createProduct("Canon EOS R5", "Professional mirrorless camera", "",  3899.99, [camera.id]),
-    createProduct("Nikon Z7 II", "High-resolution full-frame camera", "",  2999.99, [camera.id]),
-    createProduct("Sony A7 IV", "Versatile full-frame mirrorless camera", "",  2499.99, [camera.id]),
-    createProduct("Fujifilm X-T5", "APS-C mirrorless with retro design", "",  1699.99, [camera.id]),
-    createProduct("Panasonic Lumix GH6", "Video-focused micro four thirds camera", "",  1999.99, [camera.id]),
-    createProduct("Canon EOS R6 Mark II", "Fast and versatile full-frame camera", "",  2499.99, [camera.id]),
-    createProduct("Nikon Z6 II", "Balanced full-frame mirrorless", "",  1999.99, [camera.id]),
-    createProduct("Sony FX3", "Cinema-focused compact camera", "",  3899.99, [camera.id]),
-    createProduct("Olympus OM-D E-M1 Mark III", "Compact micro four thirds camera", "",  1799.99, [camera.id]),
-    createProduct("Leica Q2", "Premium compact full-frame camera", "",  4999.99, [camera.id]),
+    createProduct("Canon EOS R5", "Professional mirrorless camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832124/istockphoto-144279192-1024x1024_ju6kwo.jpg",  3899.99, [camera.id]),
+    createProduct("Nikon Z7 II", "High-resolution full-frame camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832127/istockphoto-497273187-1024x1024_mjqd0r.jpg",  2999.99, [camera.id]),
+    createProduct("Sony A7 IV", "Versatile full-frame mirrorless camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832126/istockphoto-2184290381-1024x1024_cvg9ge.jpg",  2499.99, [camera.id]),
+    createProduct("Fujifilm X-T5", "APS-C mirrorless with retro design", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832125/istockphoto-172143391-1024x1024_rssse4.jpg",  1699.99, [camera.id]),
+    createProduct("Panasonic Lumix GH6", "Video-focused micro four thirds camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832125/istockphoto-170434745-1024x1024_ft9rqu.jpg",  1999.99, [camera.id]),
+    createProduct("Canon EOS R6 Mark II", "Fast and versatile full-frame camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832125/istockphoto-147019649-1024x1024_f6jjg4.jpg",  2499.99, [camera.id]),
+    createProduct("Nikon Z6 II", "Balanced full-frame mirrorless", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832124/istockphoto-152013604-1024x1024_shloaz.jpg",  1999.99, [camera.id]),
+    createProduct("Sony FX3", "Cinema-focused compact camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832124/istockphoto-155802982-1024x1024_f2xwkd.jpg",  3899.99, [camera.id]),
+    createProduct("Olympus OM-D E-M1 Mark III", "Compact micro four thirds camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832124/istockphoto-118201323-1024x1024_iq4qpd.jpg",  1799.99, [camera.id]),
+    createProduct("Leica Q2", "Premium compact full-frame camera", "https://res.cloudinary.com/dynix3j26/image/upload/v1758832127/istockphoto-966434916-1024x1024_b9czdc.jpg",  4999.99, [camera.id]),
   ])
 }
 
