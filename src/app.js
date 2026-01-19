@@ -45,5 +45,8 @@ app.use("/api/orders/", (req, res, next) => {
 app.use("/api/addresses/", passport.authenticate('jwt', { session: false }), addressRouter);
 
 
-const APP_PORT = process.env.APP_PORT;
-app.listen(APP_PORT, () => console.log("Server starting on", APP_PORT));
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Server starting on", PORT);
+});
