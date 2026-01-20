@@ -43,13 +43,15 @@ const configPassportJwt = (passport) => {
 
 
 // Checkout this repo: (https://github.com/nemanjam/mern-boilerplate)
-const clientUrl = process.env.NODE_ENV === 'production' ? urlsConfig.clientUrlProd : urlsConfig.clientUrlDev;
+const serverUrl = process.env.NODE_ENV === 'production' ? urlsConfig.serverUrlProd : urlsConfig.serverUrlDev;
 const googleOauth2Opts = {
   clientID: authConfig.google_client_id,
   clientSecret: authConfig.google_client_secret,
-  callbackURL: `${clientUrl}api/auth/google/callback`,
+  callbackURL: `${serverUrl}api/auth/google/callback`,
   proxy: true,
 }
+
+
 
 
 const configPassportGoogleOauth2 = (passport) => {
