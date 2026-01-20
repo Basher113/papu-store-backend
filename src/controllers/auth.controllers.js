@@ -90,13 +90,13 @@ const loginController = async (req, res) => {
       httpOnly: true,
       secure: true,
       maxAge: 1000 * 60 * 60 * 24 * 5, // 5 days
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+      sameSite:  "None",
     });
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
       secure: true,
       maxAge: 1000 * 60 * 15, // 15 minutes
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+      sameSite: "None",
     });
     const {id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt } = user;
     return res.json({id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt });
@@ -121,13 +121,13 @@ const logoutController = async (req, res) => {
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: true,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+      sameSite: "None",
     });
 
     res.clearCookie("accessToken", {
       httpOnly: true,
       secure: true,
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+      sameSite: "None",
     });
 
     return res.json({message: "Logged out successfully"});
@@ -178,7 +178,7 @@ const refreshTokenController = async (req, res) => {
       httpOnly: true,
       secure: true,
       maxAge: 1000 * 60 * 15, // 15 minutes
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+      sameSite:  "None",
     });
 
     res.json({message: "Refresh token successfully"});
@@ -223,14 +223,14 @@ const googleCallbackController = async (req, res) => {
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: true,
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+    sameSite: "None",
     maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days in milliseconds
   });
 
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
     secure: true,
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "None",
+    sameSite:  "None",
     maxAge: 1000 * 60 * 15 // 15 minutes in milliseconds
   });
 
