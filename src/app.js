@@ -17,9 +17,11 @@ const addressRouter = require("./router/address.router");
 const app = express();
 
 app.use(cors({
-  origin: process.env.NODE_ENV === "production" ? urlsConfig.clientUrlProd: urlsConfig.clientUrlDev,
+  origin: process.env.NODE_ENV === "production" ? urlsConfig.clientUrlProd : urlsConfig.clientUrlDev,
   credentials: true
 }));
+
+console.log(urlsConfig.clientUrlDev, urlsConfig.clientUrlProd);
 
 
 // Passport initilize
