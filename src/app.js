@@ -21,11 +21,6 @@ app.use(cors({
   credentials: true
 }));
 
-console.log(urlsConfig.clientUrlDev, urlsConfig.clientUrlProd);
-console.log(process.env.NODE_ENV === "production" ? urlsConfig.clientUrlProd : urlsConfig.clientUrlDev);
-
-
-
 // Passport initilize
 configPassportJwt(passport); // Use the configured jwt strategy
 configPassportGoogleOauth2(passport); // Use google oauth strategy
