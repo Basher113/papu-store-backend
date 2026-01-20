@@ -17,7 +17,7 @@ const registerController = async (req, res) => {
     });
 
     if (emailInvalid) {
-      return res.status(400).json({message: "Email already taken"});
+      return res.status(400).json({errors: {"email": ["Email Already Taken"]}});
     }
 
     // Check if username is still valid
@@ -25,7 +25,7 @@ const registerController = async (req, res) => {
       where: {username}
     });
     if (usernameInvalid) {
-      return res.status(400).json({message: "Username already taken"});
+      return res.status(400).json({errors: {"username": ["Username Already Taken"]}});
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
