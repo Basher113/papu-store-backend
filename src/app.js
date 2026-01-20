@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require('cors')
 const passport = require("passport");
 const cookieParser = require("cookie-parser");
+const urlsConfig = require("./config/urls.config")
 require("dotenv").config();
 
 const {configPassportJwt, configPassportGoogleOauth2} = require("./config/passport.config");
@@ -14,8 +15,9 @@ const orderRouter = require("./router/order.router");
 const addressRouter = require("./router/address.router");
 
 const app = express();
+
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: process.env.NODE_ENV === "production" ? urlsConfig.clientUrlProd: urlsConfig.clientUrlDev,
   credentials: true
 }));
 
