@@ -138,6 +138,20 @@ const logoutController = async (req, res) => {
 }
 
 const refreshTokenController = async (req, res) => {
+
+  // Add clean up for expired refresh tokens.
+  try {
+    await prisma.refreshToken.deleteMany({
+    where: {
+      OR: [
+        { expiresAt: { lt: new Date() } }, // expired
+      ],
+    },
+  });
+  } catch (e) {
+    console.log("Error deleting xepired refresh tokens:", e)
+  }
+
   try {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
