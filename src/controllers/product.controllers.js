@@ -15,7 +15,14 @@ const getProductController = async (req, res) => {
   try {
     
     const product = await prisma.product.findUnique({
-      where: {id: productId}
+      where: {id: productId},
+      include: {
+        categories: {
+          select: {
+            name: true
+          }
+        }
+      }
     })
 
     if (!product) {
