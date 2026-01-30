@@ -47,7 +47,7 @@ const serverUrl = process.env.NODE_ENV === 'production' ? urlsConfig.serverUrlPr
 const googleOauth2Opts = {
   clientID: authConfig.google_client_id,
   clientSecret: authConfig.google_client_secret,
-  callbackURL: `${serverUrl}api/auth/google/callback`,
+  callbackURL: `${serverUrl}auth/google/callback`,
   proxy: true,
 }
 
