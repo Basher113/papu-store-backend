@@ -44,21 +44,33 @@ const createProductsController = async (req, res) => {
   }
 
   const {name, description, imageUrl, price, discountPercent, stock, categories} = req.body;
-  const formattedPrice = parseFloat(price).toFixed(2);
-  const formattedDiscountPercent = discountPercent !== null ? parseFloat(discountPercent).toFixed(2) : null;
-  // TODO: ADD CUSTOM VALIDATIONS OR USE VALIDATORS LIBRARY LIKE (zod, express-validators).
+  // Input is already validated by Zod middleware
 
   try {
-    const products = await prisma.product.create({
-      name,
-      description,
-      imageUrl,
-      price: Number(formattedPrice),
-      discountPercent:formattedDiscountPercent ? Number(formattedDiscountPercent) : null,
-      stock: parseInt(stock, 10),
-      categories
+    const product = await prisma.product.create({
+      data: {
+        name,
+        description,
+        imageUrl,
+        price: price,
+        discountPercent: discountPercent,
+        stock: stock,
+      }
     });
-    return res.status(201).json({products});
+    
+    // Connect categories if provided
+    if (categories && categories.length > 0) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          categories: {
+            connect: categories.map(id => ({ id }))
+          }
+        }
+      });
+    }
+    
+    return res.status(201).json({product});
   } catch (error) {
     console.log("Create Products Error:", error);
     return res.status(500).json({message: "Create Products Unexpected Error"});
@@ -72,9 +84,7 @@ const updateProductController = async (req, res) => {
 
   const { productId } = req.params;
   const { name, description, imageUrl, price, discountPercent, stock, categories } = req.body;
-  const formattedPrice = price !== undefined ? parseFloat(price).toFixed(2) : undefined;
-  const formattedDiscountPercent = discountPercent !== undefined ? parseFloat(discountPercent).toFixed(2) : undefined;
-  // TODO: ADD CUSTOM VALIDATIONS OR USE VALIDATORS LIBRARY LIKE (zod, express-validators).
+  // Input is already validated by Zod middleware
 
   try {
     const existingProduct = await prisma.product.findUnique({ where: { id: productId } });
@@ -82,18 +92,30 @@ const updateProductController = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+    if (price !== undefined) updateData.price = price;
+    if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
+    if (stock !== undefined) updateData.stock = stock;
+
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
-      data: {
-        name,
-        description,
-        imageUrl,
-        price: formattedPrice ? Number(formattedPrice) : undefined,
-        discountPercent: formattedDiscountPercent ? Number(formattedDiscountPercent) : undefined,
-        stock: parseInt(stock, 10),
-        categories,
-      },
+      data: updateData,
     });
+
+    // Update categories if provided
+    if (categories !== undefined) {
+      await prisma.product.update({
+        where: { id: productId },
+        data: {
+          categories: {
+            set: categories.map(id => ({ id }))
+          }
+        }
+      });
+    }
 
     return res.json({ product: updatedProduct });
   } catch (error) {

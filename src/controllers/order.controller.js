@@ -28,6 +28,16 @@ const getUserOrdersController = async (req, res) => {
       ];
     }
 
+    // Get counts for each status
+    const [allCount, pendingCount, processingCount, shippedCount, deliveredCount, cancelledCount] = await Promise.all([
+      prisma.order.count({ where: { ...where, status: undefined } }),
+      prisma.order.count({ where: { ...where, status: 'PENDING' } }),
+      prisma.order.count({ where: { ...where, status: 'PROCESSING' } }),
+      prisma.order.count({ where: { ...where, status: 'SHIPPED' } }),
+      prisma.order.count({ where: { ...where, status: 'DELIVERED' } }),
+      prisma.order.count({ where: { ...where, status: 'CANCELLED' } }),
+    ]);
+
     const orders = await prisma.order.findMany({
         where,
         include: {
@@ -44,14 +54,24 @@ const getUserOrdersController = async (req, res) => {
       })
 
     let nextCursor = null;
-    if (orders.length > parseInt(limit)) { // Check if has more orders
+    if (orders.length > parseInt(limit)) {
       const lastOrder = orders.pop();
       nextCursor = lastOrder.id;
     }
     
-    return res.json({orders, cursorId: nextCursor})
+    return res.json({
+      orders,
+      cursorId: nextCursor,
+      counts: {
+        all: allCount,
+        PENDING: pendingCount,
+        PROCESSING: processingCount,
+        SHIPPED: shippedCount,
+        DELIVERED: deliveredCount,
+        CANCELLED: cancelledCount,
+      }
+    });
   
-
   } catch (error) {
     console.log("get user orders error:", error);
     return res.status(500).json({message: "Internal Service Error"});
@@ -187,6 +207,13 @@ const createOrderController = async (req, res) => {
 const updatelOrderContoller = async (req, res) => {
   const {orderId} = req.params;
   const {newStatus} = req.body;
+  
+  // Validate status
+  const validStatuses = ["PENDING", "SHIPPED", "CANCELLED", "DELIVERED", "REFUNDED", "PROCESSING"];
+  if (!newStatus || !validStatuses.includes(newStatus.toUpperCase())) {
+    return res.status(400).json({message: "Invalid order status"});
+  }
+  
   try {
     await prisma.order.update({
       where: {id: orderId},

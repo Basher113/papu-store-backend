@@ -1,17 +1,43 @@
 const prisma = require("../db");
 const axios = require("axios");
+const crypto = require("crypto");
 require("dotenv").config();
 
 const paymongoSecretKey = process.env.PAYMONGO_TEST_SECRET_KEY;
+const paymongoWebhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
+
+// Verify PayMongo webhook signature
+const verifyPaymongoSignature = (payload, signature, timestamp) => {
+  if (!paymongoWebhookSecret) {
+    console.error("PAYMONGO_WEBHOOK_SECRET not configured");
+    return false;
+  }
+  
+  const composedPayload = timestamp + "." + payload;
+  const expectedSignature = crypto
+    .createHmac("sha256", paymongoWebhookSecret)
+    .update(composedPayload)
+    .digest("hex");
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature, "hex"),
+    Buffer.from(expectedSignature, "hex")
+  );
+};
 
 const createPaymongoCheckoutSessionAndOrder = async (req, res) => {
   try {
     const userId = req.user.id;
     const { products, total, paymentMethod, addressData, isCheckoutFromCart } = req.body;
 
-    // 1️⃣ Create PayMongo checkout session
-    const cancel_url = "http://localhost:5173/checkout/"
-    const success_url = "http://localhost:5173/checkout/order-confirmation"
+    // Get URLs from environment/config
+    const clientUrl = process.env.NODE_ENV === 'production' 
+      ? process.env.CLIENT_URL_PROD 
+      : process.env.CLIENT_URL_DEV;
+    
+    const cancel_url = `${clientUrl}/checkout/`;
+    const success_url = `${clientUrl}/checkout/order-confirmation`;
+    
     const response = await axios.post(
       "https://api.paymongo.com/v1/checkout_sessions",
       {
@@ -42,9 +68,9 @@ const createPaymongoCheckoutSessionAndOrder = async (req, res) => {
 
             metadata: {
               userId,
-              products,
-              addressData,
-              isCheckoutFromCart,
+              products: JSON.stringify(products),
+              addressData: JSON.stringify(addressData),
+              isCheckoutFromCart: String(isCheckoutFromCart),
               paymentMethod,
             }
           },
@@ -79,24 +105,49 @@ const createPaymongoCheckoutSessionAndOrder = async (req, res) => {
 
 const handlePaymongoWebhook = async (req, res) => {
   try {
+    // Verify webhook signature for security
+    const signature = req.headers["paymongo-signature"];
+    const timestamp = req.headers["paymongo-timestamp"];
+    
+    if (signature && timestamp && paymongoWebhookSecret) {
+      const rawBody = JSON.stringify(req.body);
+      const isValid = verifyPaymongoSignature(rawBody, signature, timestamp);
+      
+      if (!isValid) {
+        console.error("Invalid webhook signature - possible spoofing attempt");
+        return res.status(401).send("Invalid signature");
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      console.error("Webhook signature verification failed - missing headers or secret");
+      return res.status(401).send("Signature verification required in production");
+    }
+    
     const event = req.body.data;
     const type = event.attributes.type;
-    console.log("webhook before")
-     if (
+    
+    if (
       type === "checkout_session.payment.paid" ||
       type === "payment.paid"
     ) {
 
       const session = event.attributes.data;
-      const { metadata, amount } = JSON.stringify(session.attributes);
+      const metadata = session.attributes.metadata;
       
       const {
         addressData,
         userId,
         products,
         isCheckoutFromCart,
-        paymentMethod, // 👈 MUST come from metadata
-      } = JSON.parse(metadata);
+        paymentMethod,
+      } = {
+        addressData: JSON.parse(metadata.addressData || "{}"),
+        userId: metadata.userId,
+        products: JSON.parse(metadata.products || "[]"),
+        isCheckoutFromCart: metadata.isCheckoutFromCart === "true",
+        paymentMethod: metadata.paymentMethod,
+      };
+      
+      const amount = session.attributes.amount;
 
       // Create Order
       const order = await prisma.order.create({
@@ -124,20 +175,20 @@ const handlePaymongoWebhook = async (req, res) => {
         },
       });
 
-      // 2️⃣ Create Payment Transaction
+      // Create Payment Transaction
       await prisma.paymentTransaction.create({
         data: {
           orderId: order.id,
-          paymentMethod: paymentMethod, // 👈 now defined
-          transactionRef: session.id,   // 👈 FIXED
+          paymentMethod: paymentMethod,
+          transactionRef: session.id,
           amount: amount / 100,
-          paidAt: new Date(),           // 👈 will now persist correctly
+          paidAt: new Date(),
           currency: "PHP",
           status: "PAID",
         },
       });
 
-      // 3️⃣ Clear cart if needed
+      // Clear cart if needed
       if (isCheckoutFromCart) {
         await prisma.cartItem.deleteMany({
           where: {

@@ -26,7 +26,8 @@ const configPassportJwt = (passport) => {
         select: {
           id: true,
           username: true,
-          email: true
+          email: true,
+          role: true
         }
       });
 
@@ -66,6 +67,7 @@ const configPassportGoogleOauth2 = (passport) => {
             id: true,
             username: true,
             email: true,
+            role: true
           }
         });
 
@@ -78,6 +80,12 @@ const configPassportGoogleOauth2 = (passport) => {
               password: null,
               provider: "google",
               googleId: profile.id
+            },
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              role: true
             }
           });
           return done(null, newUser);

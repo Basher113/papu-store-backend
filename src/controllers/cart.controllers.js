@@ -31,7 +31,7 @@ const getCartByUserController = async (req, res) => {
 
 const addCartItemToCartController = async (req, res) => {
   const userId = req.user.id;
-  const {productId, quantity} = req.body;
+  const {productId, quantity} = req.body; // Already validated by Zod middleware
   try {
     // Check if the product exist
     const existingProduct = await prisma.product.findUnique({
@@ -39,6 +39,11 @@ const addCartItemToCartController = async (req, res) => {
     });
     if (!existingProduct) {
       return res.status(404).json({message: "Product not found."});
+    }
+
+    // Check if there's enough stock
+    if (existingProduct.stock < quantity) {
+      return res.status(400).json({message: "Not enough stock available."});
     }
 
     // find or create user cart
@@ -61,13 +66,13 @@ const addCartItemToCartController = async (req, res) => {
       },
       update: {
         quantity: {
-          increment: parseInt(quantity),
+          increment: quantity,
         }
       },
       create: {
         productId: productId,
         cartId: userCart.id,
-        quantity: parseInt(quantity)
+        quantity: quantity
       },
      
     })
@@ -81,11 +86,26 @@ const addCartItemToCartController = async (req, res) => {
 
 const updateCartItemController = async (req, res) => {
   const {cartItemId} = req.params;
-  const {quantity} = req.body;
+  const {quantity} = req.body; // Already validated by Zod middleware
   try {
+    // Get cart item with product info to check stock
+    const cartItem = await prisma.cartItem.findUnique({
+      where: {id: cartItemId},
+      include: {product: true}
+    });
+    
+    if (!cartItem) {
+      return res.status(404).json({message: "Cart item not found."});
+    }
+    
+    // Check if there's enough stock
+    if (cartItem.product.stock < quantity) {
+      return res.status(400).json({message: "Not enough stock available."});
+    }
+    
     await prisma.cartItem.update({
       where: {id: cartItemId},
-      data: {quantity: parseInt(quantity)},
+      data: {quantity: quantity},
     })
 
     return res.json({message: "Updated Succesfully."});

@@ -56,7 +56,7 @@ const loginController = async (req, res) => {
       return res.status(400).json({message: "Invalid Credentials"});
     }
 
-    const isValidPassword = bcrypt.compare(password, user.password);
+    const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(400).json({message: "Invalid Credentials"});
     }
@@ -163,7 +163,7 @@ const refreshTokenController = async (req, res) => {
     });
 
     if (!storedToken) {
-      res.status(403).json({message: "Invalid Token"});
+      return res.status(403).json({message: "Invalid Token"});
     }
 
     if (storedToken.revoked) {
@@ -176,7 +176,7 @@ const refreshTokenController = async (req, res) => {
         where: {userId: storedToken.userId, revoked: false},
         data: {revoked: true}
       });
-      res.status(403).json({message: "Revoked Token"});
+      return res.status(403).json({message: "Revoked Token"});
     }
 
     // verify the refreshToken (e.g. expired)
