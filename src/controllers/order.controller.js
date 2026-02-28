@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 const getUserOrdersController = async (req, res) => {
   const userId = req.user.id;
@@ -73,7 +74,7 @@ const getUserOrdersController = async (req, res) => {
     });
   
   } catch (error) {
-    console.log("get user orders error:", error);
+    logger.error("get user orders error:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
@@ -97,7 +98,7 @@ const getUserOrderByOrderIdController = async (req, res) => {
     if (!order) return res.status(404).json({message: "Order not found."});
     return res.json(order);
   } catch (error) {
-    console.log("get user order error:", error);
+    logger.error("get user order error:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
@@ -120,7 +121,7 @@ const getUserOrderBySessionIdController = async (req, res) => {
     const order = transaction.order;
     return res.status(200).json(order);
   } catch (error) {
-    console.log("Get user order by session id error:", error)
+    logger.error("Get user order by session id error:", error)
     return res.status(500).json({message: "Internal Service Error"});
   }
 
@@ -142,7 +143,7 @@ const getUserOrderItemsController = async (req, res) => {
     });
     return res.json(userOrders);
   } catch (error) {
-    console.log("get user orders error:", error);
+    logger.error("get user orders error:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
@@ -202,10 +203,10 @@ const createOrderController = async (req, res) => {
       return newOrder;
     });
 
-    return res.status(201).json({orderId: order.id, checkoutUrl: "http://localhost:5173/checkout/order-confirmation", message: "Order Succesfully."});
+    return res.status(201).json({success: true, order, message: "Order Succesfully."});
     
   } catch (error) {
-    console.log("create order controller error:", error);
+    logger.error("create order controller error:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
@@ -229,7 +230,7 @@ const updatelOrderContoller = async (req, res) => {
     });
     return res.json({message: "order updated"});
   } catch (error) {
-    console.log("update order controller error:", error);
+    logger.error("update order controller error:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }

@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 const getCartByUserController = async (req, res) => {
   const userId = req.user.id;
@@ -24,7 +25,7 @@ const getCartByUserController = async (req, res) => {
   
     return res.json(userCartItems);
   } catch (error) {
-    console.log("Get Cart By User Error:", error);
+    logger.error("Get Cart By User Error:", error);
     return res.status(500).json({message: "Unexpected Error."});
   }
 }
@@ -79,7 +80,7 @@ const addCartItemToCartController = async (req, res) => {
 
     return res.json({message: "Add to cart succesfully."});
   } catch (error) {
-    console.log("Add to Cart Error:", error);
+    logger.error("Add to Cart Error:", error);
     return res.status(500).json({message: "Unexpected result. Please try again later."});
   }
 }
@@ -110,7 +111,7 @@ const updateCartItemController = async (req, res) => {
 
     return res.json({message: "Updated Succesfully."});
   } catch (error) {
-    console.log("Update Cart Item Controller Error:", error);
+    logger.error("Update Cart Item Controller Error:", error);
     return res.status(500).json("Unexpected Error.");
   }
 }
@@ -124,7 +125,7 @@ const deleteCartItemController = async (req, res) => {
 
     return res.json({message: "Item deleted."});
   } catch (error) {
-    console.log("Delete Cart Item Controller Error:", error);
+    logger.error("Delete Cart Item Controller Error:", error);
     return res.status(500).json("Unexpected Error.");
   }
 }

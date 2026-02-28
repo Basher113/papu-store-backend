@@ -1,6 +1,7 @@
 const prisma = require("../db");
 const axios = require("axios");
 const crypto = require("crypto");
+const logger = require("../config/logger");
 require("dotenv").config();
 
 const paymongoSecretKey = process.env.PAYMONGO_TEST_SECRET_KEY;
@@ -9,7 +10,7 @@ const paymongoWebhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
 // Verify PayMongo webhook signature
 const verifyPaymongoSignature = (payload, signature, timestamp) => {
   if (!paymongoWebhookSecret) {
-    console.error("PAYMONGO_WEBHOOK_SECRET not configured");
+    logger.error("PAYMONGO_WEBHOOK_SECRET not configured");
     return false;
   }
   
@@ -94,7 +95,7 @@ const createPaymongoCheckoutSessionAndOrder = async (req, res) => {
       });
 
   } catch (error) {
-    console.error("Checkout session error:", error.response?.data || error.message);
+    logger.error("Checkout session error:", error.response?.data || error.message);
     return res.status(500).json({
       success: false,
       message: "Failed to create PayMongo checkout session.",
@@ -114,11 +115,11 @@ const handlePaymongoWebhook = async (req, res) => {
       const isValid = verifyPaymongoSignature(rawBody, signature, timestamp);
       
       if (!isValid) {
-        console.error("Invalid webhook signature - possible spoofing attempt");
+        logger.error("Invalid webhook signature - possible spoofing attempt");
         return res.status(401).send("Invalid signature");
       }
     } else if (process.env.NODE_ENV === 'production') {
-      console.error("Webhook signature verification failed - missing headers or secret");
+      logger.error("Webhook signature verification failed - missing headers or secret");
       return res.status(401).send("Signature verification required in production");
     }
     
@@ -149,60 +150,63 @@ const handlePaymongoWebhook = async (req, res) => {
       
       const amount = session.attributes.amount;
 
-      // Create Order
-      const order = await prisma.order.create({
-        data: {
-          userId,
-          status: "PROCESSING",
-          orderItems: {
-            createMany: {
-              data: products.map((product) => ({
-                productId: product.id,
-                quantity: parseInt(product.quantity),
-              })),
+      // Use prisma.$transaction to ensure all operations succeed or all fail together
+      await prisma.$transaction(async (tx) => {
+        // Step 1: Create Order
+        const order = await tx.order.create({
+          data: {
+            userId,
+            status: "PROCESSING",
+            orderItems: {
+              createMany: {
+                data: products.map((product) => ({
+                  productId: product.id,
+                  quantity: parseInt(product.quantity),
+                })),
+              },
             },
-          },
-          address: {
-            create: {
-              fullName: addressData.fullName,
-              phoneNumber: addressData.phoneNumber,
-              barangay: addressData.barangay,
-              street: addressData.street,
-              city: addressData.city,
-              postalCode: addressData.postalCode,
-            },
-          },
-        },
-      });
-
-      // Create Payment Transaction
-      await prisma.paymentTransaction.create({
-        data: {
-          orderId: order.id,
-          paymentMethod: paymentMethod,
-          transactionRef: session.id,
-          amount: amount / 100,
-          paidAt: new Date(),
-          currency: "PHP",
-          status: "PAID",
-        },
-      });
-
-      // Clear cart if needed
-      if (isCheckoutFromCart) {
-        await prisma.cartItem.deleteMany({
-          where: {
-            cart: {
-              userId: userId,
+            address: {
+              create: {
+                fullName: addressData.fullName,
+                phoneNumber: addressData.phoneNumber,
+                barangay: addressData.barangay,
+                street: addressData.street,
+                city: addressData.city,
+                postalCode: addressData.postalCode,
+              },
             },
           },
         });
-      }
+
+        // Step 2: Create Payment Transaction
+        await tx.paymentTransaction.create({
+          data: {
+            orderId: order.id,
+            paymentMethod: paymentMethod,
+            transactionRef: session.id,
+            amount: amount / 100,
+            paidAt: new Date(),
+            currency: "PHP",
+            status: "PAID",
+          },
+        });
+
+        // Step 3: Clear cart if needed
+        if (isCheckoutFromCart) {
+          await tx.cartItem.deleteMany({
+            where: {
+              cart: {
+                userId: userId,
+              },
+            },
+          });
+        }
+      });
     }
 
     res.sendStatus(200);
   } catch (err) {
-    console.error("Webhook error:", err);
+    logger.error("Webhook error:", err);
     res.sendStatus(500);
   }
 };

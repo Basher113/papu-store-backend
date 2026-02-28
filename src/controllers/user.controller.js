@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 const getUsersController = async (req, res) => {
   // Only ADMIN users can access all users
@@ -20,7 +21,7 @@ const getUsersController = async (req, res) => {
     });
     return res.json({users});
   } catch (error) {
-    console.log("Error getting users:", error);
+    logger.error("Error getting users:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 };
@@ -30,7 +31,7 @@ const getCurrentUserDataController = async (req, res) => {
     const user = await prisma.user.findUnique({where: {id: req.user.id}});
     return res.json(user);
   } catch (error) {
-    console.log("Error getting users:", error);
+    logger.error("Error getting current user data:", error);
     return res.status(500).json({message: "Internal Service Error"});
   }
 }

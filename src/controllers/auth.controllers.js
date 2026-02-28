@@ -4,12 +4,13 @@ const authConfig = require("../config/auth.config");
 const jwt = require("jsonwebtoken");
 const urlsConfig = require("../config/urls.config");
 const { generateAccessToken, generateRefreshToken } = require("../utils/token.utils");
+const logger = require("../config/logger");
 require('dotenv').config();
 
 
 const registerController = async (req, res) => {
   const {username, email, password} = req.body;
-  console.log(email, "Email");
+  logger.info(email, "Email");
   try {
     // Check if email is still valid
     const emailInvalid = await prisma.user.findUnique({
@@ -39,7 +40,7 @@ const registerController = async (req, res) => {
 
     return res.status(201).json({message: "User registered successfully"});
   } catch (error) {
-    console.log("Register Error:", error);
+    logger.error("Register Error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -63,27 +64,33 @@ const loginController = async (req, res) => {
 
     // (user login while still logged in)
     const existingToken = req.cookies?.refreshToken;
-    if (existingToken) {
-      console.log("Revoke existing")
-      try {
-        await prisma.refreshToken.update({
-          where: { token: existingToken, userId: user.id, revoked: false },
-          data: { revoked: true },
-        });
-      } catch (err) {
-        console.log("Error revoking old refresh token:", err);
-      }
-    }
-
+    
+    // Generate tokens first
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    await prisma.refreshToken.create({
-      data: {
-        userId: user.id,
-        token: refreshToken,
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
+    // Use transaction to ensure token operations succeed or fail together
+    await prisma.$transaction(async (tx) => {
+      // Revoke existing token if present
+      if (existingToken) {
+        try {
+          await tx.refreshToken.update({
+            where: { token: existingToken, userId: user.id, revoked: false },
+            data: { revoked: true },
+          });
+        } catch (err) {
+          logger.warn("Error revoking old refresh token:", err);
+        }
       }
+
+      // Create new refresh token
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: refreshToken,
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
+        }
+      });
     });
 
     res.cookie("refreshToken", refreshToken, {
@@ -102,7 +109,7 @@ const loginController = async (req, res) => {
     return res.json({id, email: userEmail, username, googleId, provider, role, createdAt, updatedAt });
 
   } catch (error) {
-    console.log("Login Error:", error);
+    logger.error("Login Error:", error);
     return res.status(500).json({error});
   }
 };
@@ -132,7 +139,7 @@ const logoutController = async (req, res) => {
 
     return res.json({message: "Logged out successfully"});
   } catch (error) {
-    console.log("Logout Error:", error);
+    logger.error("Logout Error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -149,7 +156,7 @@ const refreshTokenController = async (req, res) => {
     },
   });
   } catch (e) {
-    console.log("Error deleting xepired refresh tokens:", e)
+    logger.warn("Error deleting expired refresh tokens:", e)
   }
 
   try {
@@ -182,7 +189,7 @@ const refreshTokenController = async (req, res) => {
     // verify the refreshToken (e.g. expired)
     jwt.verify(refreshToken, authConfig.refresh_secret, (err, decoded) => {
       if (err || decoded.userId !== storedToken.userId) {
-        console.log("Refresh Token Verify Error:", err);
+        logger.error("Refresh Token Verify Error:", err);
         return res.status(403).json({message: "Invalid token"});
       }
     });
@@ -198,7 +205,7 @@ const refreshTokenController = async (req, res) => {
     res.json({message: "Refresh token successfully"});
 
   } catch (error) {
-     console.log("Refresh Token Error:", error);
+     logger.error("Refresh Token Error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -208,31 +215,33 @@ const refreshTokenController = async (req, res) => {
 const googleCallbackController = async (req, res) => {
   // (user login while still logged in)
   const existingRefreshToken = req.cookies?.refreshToken;
-  if (existingRefreshToken) {
-    try {
-      await prisma.refreshToken.updateMany({
-        where: { token: existingRefreshToken},
-        data: { revoked: true },
-      });
-    } catch (err) {
-      console.log("Error revoking old refresh token:", err);
-    }
-  }
-
+  
   const refreshToken = generateRefreshToken(req.user.id);
   const accessToken = generateAccessToken(req.user.id);
-  try {
-    // add the refresh token in db
-    await prisma.refreshToken.create({
+  
+  // Use transaction to ensure token operations succeed or fail together
+  await prisma.$transaction(async (tx) => {
+    // Revoke existing token if present
+    if (existingRefreshToken) {
+      try {
+        await tx.refreshToken.updateMany({
+          where: { token: existingRefreshToken},
+          data: { revoked: true },
+        });
+      } catch (err) {
+        logger.warn("Error revoking old refresh token:", err);
+      }
+    }
+
+    // Create new refresh token
+    await tx.refreshToken.create({
       data: {
         token: refreshToken,
         userId: req.user.id,
         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5) // 5 days
       }
     });
-  } catch (error) {
-    console.log("Adding refresh token in db error:", error);
-  }
+  });
   
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,

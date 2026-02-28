@@ -1,11 +1,46 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 const getProductsController = async (req, res) => {
+  const { cursorId, limit } = req.query;
+  const defaultLimit = 12; // Default products per page
+
   try {
-    const products = await prisma.product.findMany();
-    return res.json({products});
+    const products = await prisma.product.findMany({
+      take: parseInt(limit) || defaultLimit,
+      cursor: cursorId ? { id: cursorId } : undefined,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      include: {
+        categories: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Check if there are more products
+    let nextCursor = null;
+    const actualLimit = parseInt(limit) || defaultLimit;
+    if (products.length > actualLimit) {
+      const lastProduct = products.pop();
+      nextCursor = lastProduct.id;
+    }
+
+    // Get total count for pagination info
+    const totalCount = await prisma.product.count();
+
+    return res.json({
+      products,
+      cursorId: nextCursor,
+      totalCount,
+      hasMore: nextCursor !== null,
+    });
   } catch (error) {
-    console.log("Get Products Error:", error);
+    logger.error("Get Products Error:", error);
     return res.status(500).json({message: "Getting Products Unexpected Error"});
   }
 }
@@ -31,7 +66,7 @@ const getProductController = async (req, res) => {
 
     return res.json(product);
   } catch (error) {
-    console.log("Get Products Error:", error);
+    logger.error("Get Products Error:", error);
     return res.status(500).json({message: "Getting Product Unexpected Error"});
   }
 }
@@ -47,32 +82,38 @@ const createProductsController = async (req, res) => {
   // Input is already validated by Zod middleware
 
   try {
-    const product = await prisma.product.create({
-      data: {
-        name,
-        description,
-        imageUrl,
-        price: price,
-        discountPercent: discountPercent,
-        stock: stock,
-      }
-    });
-    
-    // Connect categories if provided
-    if (categories && categories.length > 0) {
-      await prisma.product.update({
-        where: { id: product.id },
+    // Use transaction to ensure product creation and category connection succeed or fail together
+    const product = await prisma.$transaction(async (tx) => {
+      // Step 1: Create the product
+      const newProduct = await tx.product.create({
         data: {
-          categories: {
-            connect: categories.map(id => ({ id }))
-          }
+          name,
+          description,
+          imageUrl,
+          price: price,
+          discountPercent: discountPercent,
+          stock: stock,
         }
       });
-    }
+      
+      // Step 2: Connect categories if provided
+      if (categories && categories.length > 0) {
+        await tx.product.update({
+          where: { id: newProduct.id },
+          data: {
+            categories: {
+              connect: categories.map(id => ({ id }))
+            }
+          }
+        });
+      }
+      
+      return newProduct;
+    });
     
     return res.status(201).json({product});
   } catch (error) {
-    console.log("Create Products Error:", error);
+    logger.error("Create Products Error:", error);
     return res.status(500).json({message: "Create Products Unexpected Error"});
   }
 }
@@ -100,26 +141,32 @@ const updateProductController = async (req, res) => {
     if (discountPercent !== undefined) updateData.discountPercent = discountPercent;
     if (stock !== undefined) updateData.stock = stock;
 
-    const updatedProduct = await prisma.product.update({
-      where: { id: productId },
-      data: updateData,
-    });
-
-    // Update categories if provided
-    if (categories !== undefined) {
-      await prisma.product.update({
+    // Use transaction to ensure product update and category update succeed or fail together
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      // Step 1: Update product fields
+      const product = await tx.product.update({
         where: { id: productId },
-        data: {
-          categories: {
-            set: categories.map(id => ({ id }))
-          }
-        }
+        data: updateData,
       });
-    }
+
+      // Step 2: Update categories if provided
+      if (categories !== undefined) {
+        await tx.product.update({
+          where: { id: productId },
+          data: {
+            categories: {
+              set: categories.map(id => ({ id }))
+            }
+          }
+        });
+      }
+
+      return product;
+    });
 
     return res.json({ product: updatedProduct });
   } catch (error) {
-    console.log("Update Product Error:", error);
+    logger.error("Update Product Error:", error);
     return res.status(500).json({message: "Update Products Unexpected Error"});
   }
 }
@@ -147,7 +194,7 @@ const deleteProductController = async (req, res) => {
     });
     return res.json({message: "Product Deleted Successfully"})
   } catch (error) {
-    console.log("Delete Product Error:", error);
+    logger.error("Delete Product Error:", error);
     return res.status(500).json({message: "Delete Product Error"})
   }
 }
@@ -182,7 +229,7 @@ const getProductsInCategoryController = async (req, res) => {
     }
     return res.json({products: productsInCategory, cursorId: nextCursor});
   } catch (error) {
-    console.log("Get Category Products Error:", error);
+    logger.error("Get Category Products Error:", error);
     return res.status(500).json({message: "Get Category Products Error"});
   }
 }

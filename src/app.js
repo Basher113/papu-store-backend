@@ -4,6 +4,7 @@ const passport = require("passport");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const urlsConfig = require("./config/urls.config");
+const logger = require("./config/logger");
 const { authLimiter, apiLimiter } = require("./middlewares/rateLimiter.middleware");
 require("dotenv").config();
 
@@ -66,11 +67,11 @@ app.use("/api/addresses/", passport.authenticate('jwt', { session: false }), add
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  logger.error("Unhandled error:", err);
   res.status(500).json({ message: "Internal server error" });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {
   console.log("Server starting on", PORT);

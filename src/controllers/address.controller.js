@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 // GET /addresses
 const getUserAddressesController = async (req, res) => {
@@ -12,7 +13,7 @@ const getUserAddressesController = async (req, res) => {
 
     res.json(addresses);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ success: false, message: "Failed to fetch addresses" });
   }
 };
@@ -28,7 +29,7 @@ const getDefaultAddressController = async (req, res) => {
 
     res.json(address);
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ success: false, message: "Failed to fetch default address" });
   }
 };
@@ -65,7 +66,7 @@ const addAddressController = async (req, res) => {
 
     res.status(201).json({ success: true, data: address });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ success: false, message: "Failed to add address" });
   }
 };
@@ -93,7 +94,7 @@ const updateAddressController = async (req, res) => {
 
     res.json({ success: true, data: updated });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ success: false, message: "Failed to update address" });
   }
 };
@@ -113,26 +114,30 @@ const deleteAddressController = async (req, res) => {
       });
     }
 
-    await prisma.address.delete({ where: { id } });
+    // Use transaction to ensure delete and set new default happen atomically
+    await prisma.$transaction(async (tx) => {
+      // Step 1: Delete the address
+      await tx.address.delete({ where: { id } });
 
-    // If deleted address was default, set another as default
-    if (address.isDefault) {
-      const nextAddress = await prisma.address.findFirst({
-        where: { userId },
-        orderBy: { createdAt: "asc" },
-      });
-
-      if (nextAddress) {
-        await prisma.address.update({
-          where: { id: nextAddress.id },
-          data: { isDefault: true },
+      // Step 2: If deleted address was default, set another as default
+      if (address.isDefault) {
+        const nextAddress = await tx.address.findFirst({
+          where: { userId },
+          orderBy: { createdAt: "asc" },
         });
+
+        if (nextAddress) {
+          await tx.address.update({
+            where: { id: nextAddress.id },
+            data: { isDefault: true },
+          });
+        }
       }
-    }
+    });
 
     res.json({ success: true, message: "Address deleted successfully" });
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).json({ success: false, message: "Failed to delete address" });
   }
 };

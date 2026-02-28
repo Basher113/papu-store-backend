@@ -1,4 +1,5 @@
 const prisma = require("../db");
+const logger = require("../config/logger");
 
 const authorizeCartItemAction = async (req, res, next) => {
   const userId = req.user.id;
@@ -18,7 +19,7 @@ const authorizeCartItemAction = async (req, res, next) => {
     }
     next();
   } catch (error) {
-    console.log("Authorize Cart Item Middleware Error:", error);
+    logger.error("Authorize Cart Item Middleware Error:", error);
    return res.status(500).json({message: "Internal Service Error"});
   }
 }
@@ -41,7 +42,7 @@ const authorizeOrderAction = async (req, res, next) => {
     next();
     
   } catch (error) {
-    console.log("Authorize Order Action Middleware Error:", error)
+    logger.error("Authorize Order Action Middleware Error:", error)
     return res.status(500).json({message: "Internal Service Error"});
   }
 }
