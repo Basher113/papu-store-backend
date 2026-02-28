@@ -153,17 +153,18 @@ const createOrderController = async (req, res) => {
   
   try {
 
-
-
-    const order = await prisma.order.create({
-      data: {
-        userId,
-        orderItems: {
-          createMany: {
-            data: products.map(product => ({productId: product.id, quantity: parseInt(product.quantity)})),
+    // Use prisma.$transaction to ensure all operations succeed or all fail together
+    const order = await prisma.$transaction(async (tx) => {
+      // Step 1: Create the Order with orderItems and address
+      const newOrder = await tx.order.create({
+        data: {
+          userId,
+          orderItems: {
+            createMany: {
+              data: products.map(product => ({productId: product.id, quantity: parseInt(product.quantity)})),
+            },
           },
-        },
-        address: {
+          address: {
             create: {
               fullName: addressData.fullName,
               phoneNumber: addressData.phoneNumber,
@@ -173,28 +174,33 @@ const createOrderController = async (req, res) => {
               postalCode: addressData.postalCode,
             },
           },
-      }
-    });
-
-    await prisma.paymentTransaction.create({
-      data: {
-        orderId: order.id,
-        paymentMethod: paymentMethod,
-        amount: total,
-        currency: "PHP",
-      },
-    });
-
-    if (isCheckoutFromCart) {
-      // If user checkout their cart, then clear user cart
-      await prisma.cartItem.deleteMany({
-        where: {
-          cart: {
-            userId: userId
-          }
-        }
+        },
       });
-    }
+
+      // Step 2: Create the PaymentTransaction linked to the order
+      await tx.paymentTransaction.create({
+        data: {
+          orderId: newOrder.id,
+          paymentMethod: paymentMethod,
+          amount: total,
+          currency: "PHP",
+        },
+      });
+
+      // Step 3: Clear the user's cart if checkout is from cart
+      if (isCheckoutFromCart) {
+        await tx.cartItem.deleteMany({
+          where: {
+            cart: {
+              userId: userId
+            }
+          }
+        });
+      }
+
+      // Return the created order
+      return newOrder;
+    });
 
     return res.status(201).json({orderId: order.id, checkoutUrl: "http://localhost:5173/checkout/order-confirmation", message: "Order Succesfully."});
     
